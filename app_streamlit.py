@@ -44,6 +44,26 @@ class CropSaver:
 
             cv2.imwrite(os.path.join(self.save_path, name), crop_image)
 
+class ImageProcessor:
+    def __init__(self, input_folder, output_folder):
+        self.input_folder = input_folder
+        self.output_folder = output_folder
+        os.makedirs(self.output_folder, exist_ok=True)  # Ensure output folder exists
+
+    def rotate_images(self):
+        for filename in os.listdir(self.input_folder):
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                img_path = os.path.join(self.input_folder, filename)
+                img = cv2.imread(img_path)
+                if img is not None:
+                    rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                    output_path = os.path.join(self.output_folder, filename)
+                    cv2.imwrite(output_path, rotated_img)
+                else:
+                    print(f"Warning: Unable to read image {filename}")
+            else:
+                print(f"Skipping non-image file {filename}")
+
 class ModelRunner:
     def __init__(self, detection_model_path):
         self.model = YOLOv10(detection_model_path)
@@ -53,21 +73,6 @@ class ModelRunner:
         crop_saver = CropSaver(save_path)
         for result in results:
             crop_saver.save_crop(result)
-
-class ImageProcessor:
-    def __init__(self, input_folder, output_folder):
-        self.input_folder = input_folder
-        self.output_folder = output_folder
-        os.makedirs(self.output_folder, exist_ok=True)  # Ensure output folder exists
-
-    def rotate_images(self):
-        for filename in os.listdir(self.input_folder):
-            if filename.endswith(('.jpg', '.jpeg', '.png')):
-                img_path = os.path.join(self.input_folder, filename)
-                img = cv2.imread(img_path)
-                rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-                output_path = os.path.join(self.output_folder, filename)
-                cv2.imwrite(output_path, rotated_img)
 
 # Define the Streamlit application
 def main():
@@ -83,22 +88,24 @@ def main():
         st.image(temp_image_path, caption='Uploaded Image', use_column_width=True)
 
         if st.button("Process"):
+            # Create temporary directories
             temp_input_dir = tempfile.mkdtemp()
             temp_output_dir = tempfile.mkdtemp()
 
+            # Move the uploaded image to the temporary input directory
             temp_image_dest = os.path.join(temp_input_dir, os.path.basename(temp_image_path))
             os.rename(temp_image_path, temp_image_dest)
 
-            # Run model inference on the original images
-            detection_model_path = './weight/detection_yolov10.pt'
-            model_runner = ModelRunner(detection_model_path)
-            model_runner.run_inference(temp_input_dir, temp_output_dir)
-
             # Rotate images
-            image_processor = ImageProcessor(temp_output_dir, temp_output_dir)
+            image_processor = ImageProcessor(temp_input_dir, temp_output_dir)
             image_processor.rotate_images()
 
-            # Define arguments for OCR
+            # Run model inference on the rotated images
+            detection_model_path = './weight/detection_yolov10.pt'
+            model_runner = ModelRunner(detection_model_path)
+            model_runner.run_inference(temp_output_dir, temp_output_dir)
+
+            # Define OCR processing arguments
             args = Args(
                 use_gpu=True,
                 use_xpu=False,
@@ -180,6 +187,7 @@ def main():
                 return_word_box=False
             )
 
+            # Run OCR processing
             results = predict_characters(args)
 
             print(f"results: {results}")
