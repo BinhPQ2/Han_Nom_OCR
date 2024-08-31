@@ -1,3 +1,16 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 import os
 import sys
 from PIL import Image
@@ -18,22 +31,24 @@ import paddle
 
 import ppocr.tools.infer.utility as utility
 from ppocr.postprocess import build_post_process
+from ppocr.utils.logging import get_logger
 from ppocr.utils.utility import get_image_file_list, check_and_read
 
+logger = get_logger()
+
+
 class TextRecognizer(object):
-    def __init__(self, rec_image_shape, rec_batch_num, rec_algorithm, rec_char_dict_path, use_space_char):
-        self.rec_image_shape = [int(v) for v in rec_image_shape.split(",")]
-        self.rec_batch_num = rec_batch_num
-        self.rec_algorithm = rec_algorithm
-        self.rec_char_dict_path = rec_char_dict_path
-        self.use_space_char = use_space_char
-        
+    def __init__(self, args, logger=None):
+        if logger is None:
+            logger = get_logger()
+        self.rec_image_shape = [int(v) for v in args.rec_image_shape.split(",")]
+        self.rec_batch_num = args.rec_batch_num
+        self.rec_algorithm = args.rec_algorithm
         postprocess_params = {
             "name": "CTCLabelDecode",
-            "character_dict_path": self.rec_char_dict_path,
-            "use_space_char": self.use_space_char,
+            "character_dict_path": args.rec_char_dict_path,
+            "use_space_char": args.use_space_char,
         }
-        
         if self.rec_algorithm == "SRN":
             postprocess_params = {
                 "name": "SRNLabelDecode",
@@ -805,57 +820,62 @@ class TextRecognizer(object):
                 self.autolog.times.end(stamp=True)
         return rec_res, time.time() - st
 
-def process_images(image_dir, rec_model_dir, rec_char_dict_path, rec_image_shape, rec_batch_num, rec_algorithm, use_space_char, log_file=None, warmup=False, benchmark=False):
-    # Setup logger
-    logger = get_logger(log_file=log_file) if log_file else get_logger()
-    
-    # Create text recognizer
-    text_recognizer = TextRecognizer(
-        rec_image_shape=rec_image_shape,
-        rec_batch_num=rec_batch_num,
-        rec_algorithm=rec_algorithm,
-        rec_char_dict_path=rec_char_dict_path,
-        use_space_char=use_space_char
-    )
-    
-    # Get image file list
-    image_file_list = get_image_file_list(image_dir)
+
+def main(args):
+    image_file_list = get_image_file_list(args.image_dir)
     valid_image_file_list = []
     img_list = []
 
-    # Warmup
-    if warmup:
-        img = np.random.uniform(0, 255, [48, 320, 3]).astype(np.uint8)
-        for _ in range(2):
-            text_recognizer.recognize_text([img] * int(rec_batch_num))
+    # logger
+    log_file = args.save_log_path
+    if os.path.isdir(args.save_log_path) or (
+        not os.path.exists(args.save_log_path) and args.save_log_path.endswith("/")
+    ):
+        log_file = os.path.join(log_file, "benchmark_recognition.log")
+    logger = get_logger(log_file=log_file)
 
-    # Process images
+    # create text recognizer
+    text_recognizer = TextRecognizer(args)
+
+    logger.info(
+        "In PP-OCRv3, rec_image_shape parameter defaults to '3, 48, 320', "
+        "if you are using recognition model with PP-OCRv2 or an older version, please set --rec_image_shape='3,32,320"
+    )
+
+    # warmup 2 times
+    if args.warmup:
+        img = np.random.uniform(0, 255, [48, 320, 3]).astype(np.uint8)
+        for i in range(2):
+            res = text_recognizer([img] * int(args.rec_batch_num))
+
     start_time = time.time()
     for image_file in image_file_list:
         img, flag, _ = check_and_read(image_file)
         if not flag:
             img = cv2.imread(image_file)
         if img is None:
-            logger.info("Error in loading image: {}".format(image_file))
+            logger.info("error in loading image:{}".format(image_file))
             continue
         valid_image_file_list.append(image_file)
         img_list.append(img)
-
     try:
-        rec_res = text_recognizer.recognize_text(img_list)
-    except Exception as e:
+        rec_res, _ = text_recognizer(img_list)
+
+    except Exception as E:
         logger.info(traceback.format_exc())
-        logger.info(e)
-        raise
-
+        logger.info(E)
+        exit()
     for ino in range(len(img_list)):
-        logger.info("Predicts of {}: {}".format(valid_image_file_list[ino], rec_res[ino]))
-
-    if benchmark:
-        # Report benchmark results
-        pass
-
+        logger.info(
+            "Predicts of {}:{}".format(valid_image_file_list[ino], rec_res[ino])
+        )
+    if args.benchmark:
+        text_recognizer.autolog.report()
     end_time = time.time()
     elapsed_time = (end_time - start_time) * 1000
+
     logger.info(f"Latency: {elapsed_time / len(image_file_list)} ms")
 
+
+# if __name__ == "__main__":
+#     main(utility.parse_args())
