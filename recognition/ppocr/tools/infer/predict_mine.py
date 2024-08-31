@@ -869,12 +869,17 @@ def main(args):
         logger.info(
             "Predicts of {}:{}".format(valid_image_file_list[ino], rec_res[ino])
         )
+
     if args.benchmark:
         text_recognizer.autolog.report()
     end_time = time.time()
     elapsed_time = (end_time - start_time) * 1000
 
     logger.info(f"Latency: {elapsed_time / len(image_file_list)} ms")
+
+    labels = [labels_typle[0] for labels_typle in rec_res]
+    result_dict = dict(zip(valid_image_file_list, labels))
+    return result_dict
 
 
 # if __name__ == "__main__":

@@ -1,8 +1,8 @@
 import os
 import cv2
 import numpy as np
-from recognition.ppocr.tools.infer.predict_mine import main as predict_main
-from yolov10 import YOLOv10
+from recognition.ppocr.tools.infer.predict_mine import main as predict_characters
+from ultralytics import YOLOv10
 
 class Args:
     def __init__(self, **kwargs):
@@ -14,13 +14,16 @@ class Args:
         # Optional: customize the string representation for debugging
         return str(self.__dict__)
 
+import os
+
 class ImageProcessor:
     def __init__(self, input_folder, output_folder):
         self.input_folder = input_folder
         self.output_folder = output_folder
-        os.makedirs(self.output_folder, exist_ok=True)
+        os.makedirs(self.output_folder, exist_ok=True)  # Ensure output folder exists
 
     def rotate_images(self):
+        
         for filename in os.listdir(self.input_folder):
             if filename.endswith(('.jpg', '.jpeg', '.png')):
                 img_path = os.path.join(self.input_folder, filename)
@@ -29,10 +32,12 @@ class ImageProcessor:
                 output_path = os.path.join(self.output_folder, filename)
                 cv2.imwrite(output_path, rotated_img)
 
+
 class CropSaver:
     def __init__(self, save_path):
         os.makedirs(save_path, exist_ok=True)
         self.save_path = save_path
+        os.makedirs(self.save_path, exist_ok=True)  # Ensure save folder exists
 
     def save_crop(self, result):
         conf_s = result.boxes.conf.detach().cpu().numpy()
@@ -58,8 +63,8 @@ class CropSaver:
             cv2.imwrite(os.path.join(self.save_path, name), crop_image)
 
 class ModelRunner:
-    def __init__(self, model_path):
-        self.model = YOLOv10(model_path)
+    def __init__(self, detection_model_path):
+        self.model = YOLOv10(detection_model_path)
 
     def run_inference(self, input_image_folder, save_path):
         results = self.model.predict(source=input_image_folder, conf=0.5, stream=True, save_txt=True)
@@ -71,15 +76,15 @@ def main():
     input_image_folder = "./input_image"
     detection_save_path = "./output_detection"
     rotated_save_path = "./output_detection_rotated"
-    model_path = './weight/detection_yolov10.pt'
+    detection_model_path = './weight/detection_yolov10.pt'
+
+    # Run model inference
+    model_runner = ModelRunner(detection_model_path)
+    model_runner.run_inference(input_image_folder, detection_save_path)
 
     # Process images
     image_processor = ImageProcessor(detection_save_path, rotated_save_path)
     image_processor.rotate_images()
-
-    # Run model inference
-    model_runner = ModelRunner(model_path)
-    model_runner.run_inference(input_image_folder, detection_save_path)
 
     # Define arguments
     args = Args(
@@ -163,7 +168,8 @@ def main():
         return_word_box=False
     )
 
-    predict_main(args)
+    return predict_characters(args)
 
 if __name__ == "__main__":
-    main()
+    result = main()
+    print(f"result: {result}")
