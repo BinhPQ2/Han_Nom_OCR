@@ -34,13 +34,13 @@ class CropSaver:
         width_extend_ratio = 0.1
 
         for idx, conf, xyxy in zip(idx_s, conf_s, xyxy_s):
-            name = img_name
             x0, y0, x1, y1 = xyxy.tolist()
             x0 = int(max(0, x0 - width_extend_ratio * abs(x1 - x0)))
             x1 = int(min(width, x1 + width_extend_ratio * abs(x1 - x0)))
             y0 = int(max(0, y0 - height_extend_ratio * abs(y1 - y0)))
             y1 = int(min(height, y1 + height_extend_ratio * abs(y1 - y0)))
             crop_image = img[y0:y1, x0:x1]
+            name = f"{img_name}_{x0}"
 
             cv2.imwrite(os.path.join(self.save_path, name), crop_image)
 
@@ -183,11 +183,13 @@ def main():
             results = predict_characters(args)
 
             print(f"results: {results}")
+
+            st.write("OCR Results:")
             for label in results.values():
               if len(label)==0:
                 st.write("Can't detect any characters")
               else:
-                st.write(f"OCR Results: {label}")
+                st.write(f"{label}")
 
             # Clean up temporary files
             os.remove(temp_image_dest)
