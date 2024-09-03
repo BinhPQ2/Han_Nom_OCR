@@ -25,7 +25,7 @@ class CropSaver:
         conf_s = result.boxes.conf.detach().cpu().numpy()
         xyxy_s = result.boxes.xyxy.detach().cpu().numpy()
         idx_s = [i for i in range(len(conf_s))]
-        img_name = os.path.basename(result.path)
+        img_name, img_extension = os.path.splitext(os.path.basename(result.path))
         img = result.orig_img
 
         height, width = img.shape[:2]
@@ -40,7 +40,7 @@ class CropSaver:
             y0 = int(max(0, y0 - height_extend_ratio * abs(y1 - y0)))
             y1 = int(min(height, y1 + height_extend_ratio * abs(y1 - y0)))
             crop_image = img[y0:y1, x0:x1]
-            name = f"{img_name}_{x0}"
+            name = f"{img_name}_{x0}{img_extension}"
 
             cv2.imwrite(os.path.join(self.save_path, name), crop_image)
 
@@ -68,6 +68,13 @@ class ImageProcessor:
                 rotated_img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
                 output_path = os.path.join(self.output_folder, filename)
                 cv2.imwrite(output_path, rotated_img)
+
+def get_image_parts(path):
+    filename = os.path.basename(path)  # Get the filename from the path
+    # Split by underscore to get "A" and "B" parts
+    A, B_with_ext = filename.rsplit('_', 1)
+    B = B_with_ext.split('.')[0]  # Remove the file extension
+    return A, int(B)
 
 # Define the Streamlit application
 def main():
@@ -184,8 +191,11 @@ def main():
 
             print(f"results: {results}")
 
+            # Sorting the dictionary
+            sorted_result = dict(sorted(results.items(), key=lambda x: get_image_parts(x[0])))
+
             st.write("OCR Results:")
-            for label in results.values():
+            for label in sorted_result.values():
               if len(label)==0:
                 st.write("Can't detect any characters")
               else:

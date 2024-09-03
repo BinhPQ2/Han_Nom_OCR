@@ -43,7 +43,7 @@ class CropSaver:
         conf_s = result.boxes.conf.detach().cpu().numpy()
         xyxy_s = result.boxes.xyxy.detach().cpu().numpy()
         idx_s = [i for i in range(len(conf_s))]
-        img_name = os.path.basename(result.path)
+        img_name, img_extension = os.path.splitext(os.path.basename(result.path))
         img = result.orig_img
 
         height, width = img.shape[:2]
@@ -52,13 +52,14 @@ class CropSaver:
         width_extend_ratio = 0.1
 
         for idx, conf, xyxy in zip(idx_s, conf_s, xyxy_s):
-            name = img_name
             x0, y0, x1, y1 = xyxy.tolist()
             x0 = int(max(0, x0 - width_extend_ratio * abs(x1 - x0)))
             x1 = int(min(width, x1 + width_extend_ratio * abs(x1 - x0)))
             y0 = int(max(0, y0 - height_extend_ratio * abs(y1 - y0)))
             y1 = int(min(height, y1 + height_extend_ratio * abs(y1 - y0)))
             crop_image = img[y0:y1, x0:x1]
+            name = f"{img_name}_{x0}{img_extension}"
+
 
             cv2.imwrite(os.path.join(self.save_path, name), crop_image)
 
@@ -71,6 +72,13 @@ class ModelRunner:
         crop_saver = CropSaver(save_path)
         for result in results:
             crop_saver.save_crop(result)
+
+def get_image_parts(path):
+    filename = os.path.basename(path)  # Get the filename from the path
+    # Split by underscore to get "A" and "B" parts
+    A, B_with_ext = filename.rsplit('_', 1)
+    B = B_with_ext.split('.')[0]  # Remove the file extension
+    return A, int(B)
 
 def main():
     input_image_folder = "./input_image"
@@ -172,4 +180,5 @@ def main():
 
 if __name__ == "__main__":
     result = main()
+    sorted_result = dict(sorted(result.items(), key=lambda x: get_image_parts(x[0])))
     print(f"result: {result}")
