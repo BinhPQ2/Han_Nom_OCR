@@ -9,6 +9,10 @@ This Streamlit application performs Han Nom text recognition using a YOLOv10 det
 - **OCR Processing:** Recognizes text in rotated images using an OCR system.
 
 ## Run through CLI interface (will return the results for all the images in the input folder):
+`python3 main.py`
+
+## We also support a Streamlit version with GUI that lets you choose images from your local PC, use this CLI command:
+`streamlit run app_streamlit.py`
 
 
 
