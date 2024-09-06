@@ -7,3 +7,8 @@ This Streamlit application performs Han Nom text recognition using a YOLOv10 det
 - **Image Upload:** Allows users to upload images in JPG, JPEG, or PNG formats.
 - **Model Inference:** Uses YOLOv10 for object detection on uploaded images.
 - **OCR Processing:** Recognizes text in rotated images using an OCR system.
+
+## Run through CLI interface (will return the results for all the images in the input folder):
+
+
+
