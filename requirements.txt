@@ -14,6 +14,6 @@ py-cpuinfo==9.0.0
 huggingface-hub==0.23.2
 safetensors==0.4.3
 supervision
-paddleocr
-paddlepaddle-gpu
+paddleocr==2.8.1
+paddlepaddle-gpu==2.6.1
 streamlit
