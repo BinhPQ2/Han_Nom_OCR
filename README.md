@@ -1,7 +1,7 @@
 # Han Nom Text Recognition Streamlit Application
 
 ## Overview
-This Streamlit application performs Han Nom text recognition using a YOLOv10 detection model and an OCR system. Users can upload an image, which will be processed to detect and recognize text. The application supports image rotation and utilizes temporary directories for processing.
+This Streamlit application performs Han Nom text recognition using a YOLOv10 detection model and PPOCR system. Users can upload an image, which will be processed to detect and recognize text which are the Han Nom Characters that appear in the picture.
 
 ## Features
 - **Image Upload:** Allows users to upload images in JPG, JPEG, or PNG formats.
