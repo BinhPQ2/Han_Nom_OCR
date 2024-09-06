@@ -5,8 +5,11 @@ This Streamlit application performs Han Nom text recognition using a YOLOv10 det
 
 ## Requirement
 - The environment should have all the packages required in the requirement.txt and YOLOv10 package
-`pip install -q -r requirements.txt`
-`pip install -q -e ./yolov10/` 
+  
+```
+pip install -q -r requirements.txt
+pip install -q -e ./yolov10/
+```
 - Needs GPU to run the recognition step
 
 ## Features
