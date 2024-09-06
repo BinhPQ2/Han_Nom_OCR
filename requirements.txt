@@ -16,3 +16,4 @@ safetensors==0.4.3
 supervision
 paddleocr
 paddlepaddle-gpu
+streamlit
